@@ -1,0 +1,11 @@
+# Minimal deps for Phase 1 with IMAGE_BACKEND=placeholder only
+# (No GPU / no Stable Diffusion). Use: pip install -r requirements-minimal.txt
+openai>=1.0.0
+edge-tts>=6.1.0
+moviepy>=1.0.3
+Pillow>=10.0.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
+pydub>=0.25.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0

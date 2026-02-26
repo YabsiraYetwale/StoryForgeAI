@@ -1,0 +1,29 @@
+# StoryForge AI - Phase 1 Local Prototype
+# Python 3.10+
+
+# AI / Scene planning
+openai>=1.0.0
+
+# Image generation (optional: use one)
+# Local SD via Hugging Face
+diffusers>=0.25.0
+transformers>=4.36.0
+accelerate>=0.25.0
+torch
+safetensors
+
+# TTS
+edge-tts>=6.1.0
+
+# Video composition
+moviepy>=1.0.3
+Pillow>=10.0.0
+imageio>=2.31.0
+imageio-ffmpeg>=0.4.9
+
+# Audio duration / silent clip
+pydub>=0.25.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
