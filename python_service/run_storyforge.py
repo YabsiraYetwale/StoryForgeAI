@@ -37,6 +37,7 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("story", nargs="?", help="Story text (inline)")
     group.add_argument("--file", "-f", type=Path, help="Path to a text file containing the story")
+    group.add_argument("--use-existing", action="store_true", help="Use existing scenes and narration from output/run/ (only compose video, no story needed)")
     parser.add_argument(
         "--output", "-o",
         type=Path,
@@ -62,10 +63,53 @@ def main():
         metavar="DIR",
         help="Use images from this folder instead of generating. Files sorted by name (1.png, 2.png, ... or scene_01.jpg).",
     )
+    parser.add_argument(
+        "--characters", "-c",
+        type=Path,
+        default=None,
+        metavar="FILE",
+        help="JSON or text file with character descriptions (e.g. Maya: young woman, long brown hair). Used for consistent look in generated images.",
+    )
+    parser.add_argument(
+        "--analyze-characters",
+        action="store_true",
+        help="Extract character descriptions from the story with AI (use when you don't provide --characters).",
+    )
+    parser.add_argument(
+        "--visual-prompt", "-p",
+        type=str,
+        default=None,
+        metavar="TEXT",
+        help="Instruction for how scenes should look (e.g. 'young girl in focus, soft lighting, detailed environment'). Applied to every generated image.",
+    )
+    parser.add_argument(
+        "--no-movable",
+        action="store_true",
+        help="Disable 'movable' hint (lifelike, dynamic) in image prompts. Default is movable=True.",
+    )
+    parser.add_argument(
+        "--character-images",
+        action="store_true",
+        help="Generate a standalone image per character (e.g. girl) from the scene. Saves to output/run/characters/.",
+    )
+    parser.add_argument(
+        "--animate-scenes",
+        action="store_true",
+        help="Turn each scene image into real-motion video (Stable Video Diffusion). With --use-existing, converts existing run/ images.",
+    )
+    parser.add_argument(
+        "--only-scene",
+        type=int,
+        default=None,
+        metavar="N",
+        help="When using --use-existing, only use this 1-based scene index from output/run/ (e.g. 1 = scene_001).",
+    )
     args = parser.parse_args()
 
     # Resolve paths so running from python_service finds repo files
-    if args.file:
+    if args.use_existing:
+        story = ""
+    elif args.file:
         file_path = _resolve_path(args.file)
         if not file_path.exists():
             print(f"Error: File not found: {args.file} (tried {file_path})", file=sys.stderr)
@@ -75,7 +119,7 @@ def main():
     else:
         story = args.story or ""
 
-    if not story.strip():
+    if not args.use_existing and not story.strip():
         print("Error: Story text is empty.", file=sys.stderr)
         sys.exit(1)
 
@@ -90,6 +134,13 @@ def main():
             print(f"Error: Images folder not found: {args.images}", file=sys.stderr)
             sys.exit(1)
 
+    characters_file = None
+    if args.characters is not None:
+        characters_file = _resolve_path(args.characters)
+        if not characters_file.exists():
+            print(f"Error: Characters file not found: {args.characters}", file=sys.stderr)
+            sys.exit(1)
+
     if args.name is None:
         args.name = f"storyforge_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.mp4"
 
@@ -100,6 +151,14 @@ def main():
             output_filename=args.name,
             voice=args.voice,
             images_dir=args.images,
+            characters_file=characters_file,
+            analyze_characters=args.analyze_characters,
+            visual_instruction=args.visual_prompt,
+            movable=not args.no_movable,
+            generate_character_images=args.character_images,
+            use_scene_video=args.animate_scenes,
+            use_existing_run=args.use_existing,
+            only_scene=args.only_scene,
         )
         print(f"\nVideo saved: {out_path.resolve()}")
     except KeyboardInterrupt:

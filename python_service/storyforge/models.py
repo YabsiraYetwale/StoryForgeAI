@@ -1,6 +1,12 @@
 """Data models for scenes and pipeline."""
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
+
+
+class CharacterDescription(BaseModel):
+    """Visual description of a character for consistent image generation."""
+    name: str = Field(..., description="Character name (e.g. Maya)")
+    description: str = Field(..., description="How they look: age, hair, clothes, etc.")
 
 
 class Scene(BaseModel):
