@@ -58,9 +58,9 @@ def compose_video(
                 subfn = getattr(scene_clip, "subclipped", None) or getattr(scene_clip, "subclip", None)
                 if subfn:
                     scene_clip = subfn(0, duration)
-            scene_clip = scene_clip.with_duration(duration)
+            scene_clip = _set_clip_duration(scene_clip, duration)
         else:
-            image_clip = ImageClip(str(media_path)).with_duration(duration)
+            image_clip = _set_clip_duration(ImageClip(str(media_path)), duration)
             if scene_motion:
                 motion_type = MOTION_TYPES[idx % len(MOTION_TYPES)]
                 scene_clip = _add_cinematic_motion(image_clip, duration, motion_type)
@@ -69,7 +69,7 @@ def compose_video(
 
         audio_clip = AudioFileClip(str(audio_path)) if audio_path.exists() else None
         if audio_clip is not None:
-            scene_clip = scene_clip.with_audio(audio_clip)
+            scene_clip = _set_clip_audio(scene_clip, audio_clip)
         clips.append(scene_clip)
 
     if not clips:
@@ -198,3 +198,15 @@ def _get_audio_duration(audio_path: Path) -> float:
         return len(seg) / 1000.0
     except Exception:
         return 5.0
+
+
+def _set_clip_duration(clip, duration: float):
+    """Compat helper: prefer set_duration, fallback to with_duration if present."""
+    fn = getattr(clip, "set_duration", None) or getattr(clip, "with_duration", None)
+    return fn(duration) if fn else clip
+
+
+def _set_clip_audio(clip, audio_clip):
+    """Compat helper: prefer set_audio, fallback to with_audio if present."""
+    fn = getattr(clip, "set_audio", None) or getattr(clip, "with_audio", None)
+    return fn(audio_clip) if fn else clip
