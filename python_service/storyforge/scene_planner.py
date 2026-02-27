@@ -10,8 +10,8 @@ from .models import SceneBreakdown, Scene
 SYSTEM_PROMPT = """You are a cinematic scene planner for StoryForge AI. Your job is to break a written story into a sequence of visual scenes suitable for turning into a short film.
 
 For each scene you must provide:
-1. description: A clear, concrete visual description for AI image generation (setting, characters, action, mood, lighting). Be specific (e.g. "A young woman in a red dress stands in a sunlit market, baskets of fruit around her").
-2. narration_text: The exact words to be spoken (voice-over) during this scene. Can be dialogue, description, or inner thought. Keep it concise for a 4-7 second clip.
+1. description: A clear, concrete visual description for AI image generation. Always include BOTH (a) the subject/character in the scene (e.g. a young girl, an old man) and (b) the environment and setting (e.g. sitting under a large oak tree, grass and flowers around, blue sky). Be specific so an AI can draw the full scene: character appearance, pose, location, lighting, mood. Example: "A young girl in a yellow dress sits under a large oak tree, dappled sunlight on her face, green grass and wildflowers around her, peaceful summer day."
+2. narration_text: The exact words to be spoken (voice-over) during this scene. Keep it concise for a 4-7 second clip.
 3. duration_hint_sec: Suggested duration in seconds (typically 4-8).
 
 Output a JSON object with:
@@ -49,13 +49,47 @@ def plan_scenes(story: str) -> SceneBreakdown:
 
 
 def _fallback_plan_scenes(story: str) -> SceneBreakdown:
-    """Simple paragraph-based split when no LLM is configured."""
+    """Split story into multiple scenes so the video tells the whole story (not just one image).
+    Uses paragraphs first; if only one paragraph, splits by sentences into 3–8 scenes.
+    """
+    import re
+    story = story.strip()
+    if not story:
+        return SceneBreakdown(title="Untitled", scenes=[
+            Scene(scene_number=1, description="A single scene.", narration_text="A single scene.", duration_hint_sec=5.0)
+        ])
+
+    # Prefer paragraph split
     paragraphs = [p.strip() for p in story.split("\n\n") if p.strip()]
-    if not paragraphs:
-        paragraphs = [story[:500]] if story.strip() else ["A single scene."]
+    if len(paragraphs) >= 2:
+        # Multiple paragraphs → one scene per paragraph (max 10)
+        chunks = paragraphs[:10]
+    else:
+        # Single paragraph → split by sentences so we get multiple scenes (storytelling)
+        sentences = [s.strip() for s in re.split(r"[.!?]+", story) if s.strip()]
+        if not sentences:
+            chunks = [story[:400]]
+        elif len(sentences) <= 3:
+            chunks = sentences
+        else:
+            # Group 2–3 sentences per scene to get 3–8 scenes
+            max_scenes = 8
+            min_per_scene = max(1, len(sentences) // max_scenes)
+            chunks = []
+            current = []
+            for s in sentences:
+                current.append(s)
+                if len(current) >= min_per_scene and len(chunks) < max_scenes - 1:
+                    chunks.append(" ".join(current) + ".")
+                    current = []
+            if current:
+                chunks.append(" ".join(current) + ("." if not current[-1].endswith(".") else ""))
+
     scenes = []
-    for i, para in enumerate(paragraphs[:10], start=1):
-        excerpt = para[:200] + "..." if len(para) > 200 else para
+    for i, chunk in enumerate(chunks[:10], start=1):
+        excerpt = (chunk[:220] + "...") if len(chunk) > 220 else chunk
+        if not excerpt.endswith(".") and not excerpt.endswith("..."):
+            excerpt = excerpt.rstrip() + "."
         scenes.append(
             Scene(
                 scene_number=i,

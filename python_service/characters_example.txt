@@ -1,0 +1,6 @@
+# Character descriptions for image generation (one per line: Name: description)
+# Used so the AI draws the right person and environment in each scene.
+
+Maya: young woman, long brown hair, casual summer dress, calm expression
+# Add more as needed, e.g.:
+# Leo: boy, short dark hair, blue shirt, curious look
